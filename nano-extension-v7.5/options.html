@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html><head><title>Agent Settings</title></head>
+<body style="padding: 20px; font-family: sans-serif;">
+  <h3>Agent Configuration</h3>
+  <label>Gemini API Key:</label><br>
+  <input type="password" id="apiKey" style="width: 100%; margin: 5px 0 10px; padding: 8px;"><br>
+  <button id="fetchModels" style="padding: 5px 10px; background: #6c757d; color: white; border: none; cursor: pointer; border-radius: 3px; font-size: 12px; margin-bottom: 15px;">🔄 Load Models</button><br>
+  <label>Select Model:</label><br>
+  <select id="model" style="width: 100%; margin: 5px 0 15px; padding: 8px;">
+     <option value="" disabled selected>Load models first...</option>
+  </select><br><br>
+  <button id="save" style="padding: 10px 20px; background: #007bff; color: white; border: none; cursor: pointer;">Save Settings</button>
+  <p id="status" style="color: green; margin-top: 10px;"></p>
+  <script src="options.js"></script>
+</body></html>

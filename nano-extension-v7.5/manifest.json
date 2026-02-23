@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "NanoAgent v7.5 (Anti-Loop Memory)",
+  "version": "7.5.0",
+  "permissions": ["sidePanel", "scripting", "activeTab", "tabs", "storage"],
+  "host_permissions": ["<all_urls>"],
+  "background": { "service_worker": "background.js" },
+  "side_panel": { "default_path": "sidepanel.html" },
+  "options_page": "options.html"
+}
