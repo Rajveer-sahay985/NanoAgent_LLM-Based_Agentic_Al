@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NanoAgent — Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-950 text-white min-h-screen flex items-center justify-center p-4">
+    <div class="bg-gray-900 p-8 rounded-2xl shadow-2xl w-full max-w-lg border border-gray-800">
+        <h1 class="text-3xl font-bold text-center mb-2">🤖 NanoAgent</h1>
+        <p class="text-gray-400 text-center text-sm mb-6">v7.57 TRUTH TELLER — Dashboard</p>
+
+        <!-- Auth Status -->
+        <div class="bg-green-500/10 border border-green-500/30 text-green-400 p-4 rounded-lg mb-6 text-center">
+            <p class="font-bold text-lg">✅ Agent Unlocked</p>
+            <p class="text-sm text-gray-400 mt-1">Logged in as: <span class="text-cyan-400">
+                    <%= user.email %>
+                </span></p>
+        </div>
+
+        <!-- 📱 WhatsApp Section -->
+        <div class="bg-gray-800 p-5 rounded-xl border border-gray-700 mb-6 relative">
+            <h2 class="text-lg font-bold mb-4 flex items-center gap-2">📱 WhatsApp Integration</h2>
+
+            <div id="wa-loading" class="text-center py-4">
+                <div class="animate-pulse flex flex-col items-center">
+                    <div class="h-8 w-8 rounded-full border-4 border-cyan-500 border-t-transparent animate-spin mb-3">
+                    </div>
+                    <p class="text-sm text-gray-400">Checking WhatsApp connection...</p>
+                </div>
+            </div>
+
+            <!-- QR Code Box -->
+            <div id="wa-qr-box" class="hidden text-center">
+                <p class="text-sm text-yellow-400 font-bold mb-3">Scan via WhatsApp Linked Devices</p>
+                <div class="bg-white p-2 rounded-lg inline-block shadow-lg mx-auto">
+                    <img id="wa-qr-img" src="" alt="WhatsApp QR Code" class="w-48 h-48 mix-blend-multiply">
+                </div>
+            </div>
+
+            <!-- Connected Status -->
+            <div id="wa-connected-box" class="hidden">
+                <div
+                    class="flex items-center justify-between bg-green-500/10 border border-green-500/20 p-3 rounded-lg mb-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-3 h-3 bg-green-500 rounded-full animate-pulse shadow-[0_0_10px_#22c55e]"></div>
+                        <span class="text-green-400 font-bold text-sm">WhatsApp Client is Active</span>
+                    </div>
+                    <button id="send-test-btn"
+                        class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-3 py-1 rounded text-xs transition">
+                        Send Test Msg
+                    </button>
+                </div>
+
+                <form id="target-form" class="space-y-4">
+                    <!-- Dropdown for Groups -->
+                    <div>
+                        <label class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1 block">Select
+                            Target Group</label>
+                        <select id="target-group-select"
+                            class="w-full bg-gray-900 border border-gray-600 rounded p-2 text-sm text-white focus:outline-none focus:border-cyan-500">
+                            <option value="">-- Manual Number Entry --</option>
+                        </select>
+                    </div>
+
+                    <!-- Manual Input -->
+                    <div>
+                        <label class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1 block">Or Target
+                            Phone Number</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="target-phone" placeholder="e.g. +1234567890"
+                                class="flex-1 bg-gray-900 border border-gray-600 rounded p-2 text-sm text-white focus:outline-none focus:border-cyan-500 font-mono">
+                            <button type="submit"
+                                class="bg-cyan-600 hover:bg-cyan-500 text-white font-bold px-3 rounded text-sm transition">Save
+                                Target</button>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2">The agent will auto-send extraction results and listen for
+                        commands from this target.</p>
+                </form>
+            </div>
+        </div>
+
+        <p class="text-gray-500 text-xs text-center mb-4">
+            Open the NanoAgent Chrome Extension side panel to begin automation.
+        </p>
+
+        <a href="/logout"
+            class="block w-full bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 font-bold py-3 px-4 rounded-xl transition text-center">
+            Logout & Lock Agent
+        </a>
+    </div>
+
+    <script>
+        const qrBox = document.getElementById('wa-qr-box');
+        const qrImg = document.getElementById('wa-qr-img');
+        const connectedBox = document.getElementById('wa-connected-box');
+        const loadingBox = document.getElementById('wa-loading');
+        const targetInput = document.getElementById('target-phone');
+        const groupSelect = document.getElementById('target-group-select');
+        const sendTestBtn = document.getElementById('send-test-btn');
+        let groupsLoaded = false;
+
+        async function pollWhatsAppStatus() {
+            try {
+                const res = await fetch('/api/whatsapp-qr');
+                const data = await res.json();
+
+                loadingBox.classList.add('hidden');
+
+                if (data.connected) {
+                    qrBox.classList.add('hidden');
+                    connectedBox.classList.remove('hidden');
+
+                    if (document.activeElement !== targetInput && document.activeElement !== groupSelect) {
+                        targetInput.value = data.target || '';
+                    }
+
+                    // Populate groups if we haven't already
+                    if (!groupsLoaded && data.groups && data.groups.length > 0) {
+                        data.groups.forEach(g => {
+                            const opt = document.createElement('option');
+                            opt.value = g.id;
+                            opt.textContent = g.name;
+                            groupSelect.appendChild(opt);
+                        });
+                        groupsLoaded = true;
+                    }
+
+                    // Auto-sync dropdown if target matches a group ID
+                    if (document.activeElement !== groupSelect) {
+                        const optionExists = Array.from(groupSelect.options).some(opt => opt.value === targetInput.value);
+                        groupSelect.value = optionExists ? targetInput.value : "";
+                    }
+
+                } else if (data.qr) {
+                    connectedBox.classList.add('hidden');
+                    qrBox.classList.remove('hidden');
+                    qrImg.src = data.qr;
+                }
+            } catch (e) {
+                console.error("Poller Error", e);
+            }
+        }
+
+        // Dropdown triggers input update & save
+        groupSelect.addEventListener('change', (e) => {
+            if (e.target.value) {
+                targetInput.value = e.target.value;
+            }
+        });
+
+        document.getElementById('target-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = e.target.querySelector('button');
+            const originalText = btn.textContent;
+
+            btn.textContent = 'Saving...';
+            btn.disabled = true;
+
+            await fetch('/api/whatsapp-target-manual', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ target: targetInput.value })
+            });
+
+            btn.textContent = 'Saved!';
+            btn.classList.replace('bg-cyan-600', 'bg-green-600');
+
+            setTimeout(() => {
+                btn.textContent = originalText;
+                btn.classList.replace('bg-green-600', 'bg-cyan-600');
+                btn.disabled = false;
+            }, 2000);
+        });
+
+        // Test Message
+        sendTestBtn.addEventListener('click', async () => {
+            const originalText = sendTestBtn.textContent;
+            sendTestBtn.textContent = 'Sending...';
+            sendTestBtn.disabled = true;
+
+            try {
+                const res = await fetch('/api/whatsapp-send', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: "🤖 *NanoAgent Diagnostic Test*\n\nIf you are reading this, your NanoAgent dashboard is successfully connected and transmitting." })
+                });
+                const data = await res.json();
+
+                if (data.sent) {
+                    sendTestBtn.textContent = 'Sent!';
+                    sendTestBtn.classList.replace('bg-indigo-600', 'bg-green-600');
+                } else {
+                    sendTestBtn.textContent = 'Failed';
+                    sendTestBtn.classList.replace('bg-indigo-600', 'bg-red-600');
+                }
+            } catch (err) {
+                sendTestBtn.textContent = 'Error';
+                sendTestBtn.classList.replace('bg-indigo-600', 'bg-red-600');
+            }
+
+            setTimeout(() => {
+                sendTestBtn.textContent = originalText;
+                sendTestBtn.className = 'bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-3 py-1 rounded text-xs transition';
+                sendTestBtn.disabled = false;
+            }, 3000);
+        });
+
+        // Poll every 3 seconds for QR codes or connection state
+        setInterval(pollWhatsAppStatus, 3000);
+        pollWhatsAppStatus();
+    </script>
+</body>
+
+</html>

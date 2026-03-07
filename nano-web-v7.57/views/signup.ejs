@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NanoAgent — Sign Up</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-950 text-white min-h-screen flex items-center justify-center">
+    <div class="bg-gray-900 p-8 rounded-2xl shadow-2xl w-full max-w-md border border-gray-800">
+        <h1 class="text-3xl font-bold text-center mb-2">🤖 NanoAgent</h1>
+        <p class="text-gray-400 text-center text-sm mb-6">Create your account</p>
+
+        <% if (typeof error !=='undefined' && error) { %>
+            <div class="bg-red-500/20 text-red-400 p-3 rounded-lg mb-4 text-sm text-center">
+                <%= error %>
+            </div>
+            <% } %>
+
+                <form action="/signup" method="POST" class="space-y-4">
+                    <div>
+                        <label class="text-gray-400 text-sm block mb-1">Email</label>
+                        <input type="email" name="email" required
+                            class="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:outline-none focus:border-cyan-500">
+                    </div>
+                    <div>
+                        <label class="text-gray-400 text-sm block mb-1">Password</label>
+                        <input type="password" name="password" required
+                            class="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:outline-none focus:border-cyan-500">
+                    </div>
+                    <button type="submit"
+                        class="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 px-4 rounded-lg transition">
+                        Create Account
+                    </button>
+                </form>
+
+                <p class="text-gray-500 text-sm text-center mt-4">
+                    Already have an account? <a href="/login" class="text-cyan-400 hover:text-cyan-300">Login</a>
+                </p>
+    </div>
+</body>
+
+</html>
