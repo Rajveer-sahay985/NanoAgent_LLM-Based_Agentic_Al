@@ -541,7 +541,7 @@ runBtn.onclick = async () => {
                             }, 200);
                         }, 200);
                     },
-                    args: [safePlanValue]
+                    args: [safePlanValue || ""]
                 });
                 await new Promise(r => setTimeout(r, 3000));
             }
@@ -549,6 +549,12 @@ runBtn.onclick = async () => {
             else if (typeof plan.target_index === "number") {
                 const target = elements.find(e => e.index === plan.target_index);
                 if (target) {
+                    if (target.tag === "INFO" || target.tag === "ERROR") {
+                        actionHistory.push(`[SYSTEM BLOCK] You CANNOT interact (click/type) with a system message! You must use 'navigate' to visit a real URL first.`);
+                        write(`[!] Attempted to interact with system message. Blocked.`, "error");
+                        await new Promise(r => setTimeout(r, 3000));
+                        continue;
+                    }
                     write(`Executing [${plan.action.toUpperCase()}] on [${target.text.substring(0, 20)}]`, "debug");
 
                     await chrome.scripting.executeScript({
@@ -623,7 +629,7 @@ runBtn.onclick = async () => {
                                 }
                             }
                         },
-                        args: [target.sel, plan.action, safePlanValue, target.fullHref || ""]
+                        args: [target.sel || "", plan.action || "", safePlanValue || "", target.fullHref || ""]
                     });
                     await new Promise(r => setTimeout(r, 3000));
                 }
