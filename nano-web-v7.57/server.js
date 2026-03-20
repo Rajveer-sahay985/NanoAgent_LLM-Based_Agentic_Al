@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode');
 
@@ -25,6 +26,29 @@ let waError = null;
 const os = require('os');
 const bridgeDataDir = path.join(os.homedir(), '.nanobridge_data');
 
+function getSystemBrowserPath() {
+    if (process.platform === 'win32') {
+        const paths = [
+            'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+            'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+            'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+            'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe'
+        ];
+        for (let p of paths) {
+            if (fs.existsSync(p)) return p;
+        }
+    } else if (process.platform === 'darwin') {
+        const paths = [
+            '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+            '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge'
+        ];
+        for (let p of paths) {
+            if (fs.existsSync(p)) return p;
+        }
+    }
+    return require('puppeteer').executablePath(); // Fallback
+}
+
 console.log('📱 Initializing WhatsApp Client...');
 const waClient = new Client({
     authStrategy: new LocalAuth({
@@ -33,6 +57,7 @@ const waClient = new Client({
     }),
     puppeteer: {
         headless: true,
+        executablePath: getSystemBrowserPath(),
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
