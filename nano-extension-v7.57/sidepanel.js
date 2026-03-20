@@ -195,11 +195,12 @@ STEP 0 — CLASSIFY THE TASK (do this silently before choosing an action):
 - NAVIGATION TASK: The user ONLY wants to GO somewhere or SEARCH. Goal is met when the target is VISIBLE. Do NOT click into results.
 - EXTRACTION TASK: The user wants you to FIND and REPORT info. Goal is met ONLY AFTER you use extract_info on EVERY required target. If you found what you need on the CURRENT page, you MUST 'navigate' or 'switch_tab' to find the rest! Do NOT extract the same thing twice.
 - ACTION TASK: The user wants you to DO something (e.g., click, type, pause, open multiple things). Goal is met ONLY when EVERY requested action is physically completed. If the prompt has multiple steps (e.g. "open tabs AND do X"), it is a complex ACTION TASK.
+- TRANSFER TASK: The user asked to extract data AND paste/store it somewhere else (like Google Sheets). Goal is met ONLY AFTER you physically navigate to the destination and PASTE/INJECT the data! Simply extracting it to memory is FAILURE.
 
 CRITICAL DIRECTIVES:
-1. STRICT MULTI-STEP RULE: If the request has multiple items (e.g., "get 3 titles"), DO NOT declare "is_goal_met: true" until EVERY SINGLE item is in SAVED MEMORY!
+1. STRICT MULTI-STEP RULE: If the request has multiple phases (e.g., "Find X and paste it into Y"), DO NOT declare "is_goal_met: true" until you have physically performed the paste/injection at the final destination!
 2. ADAPTIVE INTELLIGENCE: If a search yields "no matches found" or an error, pivot your strategy (e.g., try different search terms, or navigate directly via URL).
-3. SPREADSHEET GOD-MODE: If on a spreadsheet page AND fully loaded, use "inject_data" action for input. Target_index 0. Use normal actions elsewhere.
+3. SPREADSHEET INJECTION: You can ONLY use 'inject_data' if the CURRENT URL is actively a Google Sheets/Excel page. If you need to save data to a sheet but are on a different site, you MUST first 'navigate' or 'new_tab' to 'https://sheets.new', wait for it to load, and ONLY THEN use 'inject_data'.
 4. THE TAB RULE: Never say goal met just because a tab opened, UNLESS opening the tab was the *only* instruction given.
 5. EFFICIENT URLS: You may use direct handles if you know them (e.g., youtube.com/@markiplier/videos). If unknown, navigate to the site and search.
 6. ONE ACTION PER TURN: Never extract and navigate in the same step.
@@ -297,6 +298,7 @@ runBtn.onclick = async () => {
     keepRunning = true; actionHistory = []; agentMemory = [];
     let lastActionKey = "";
     let loopCounter = 0;
+    let loopTrapCount = 0;
     runBtn.style.display = "none"; stopBtn.style.display = "block"; log.innerHTML = "";
 
     write("Verifying Authorization...", "debug");
@@ -419,12 +421,20 @@ runBtn.onclick = async () => {
             const occurrences = recentActionKeys.filter(k => k === currentActionKey && plan.action !== "scroll" && plan.action !== "switch_tab").length;
 
             if (occurrences >= 3) {
+                loopTrapCount++;
+                if (loopTrapCount >= 4) {
+                    write(`[STOP] Hard aborting... Model ignored 3 FATAL BLOCK messages! Shutting down to protect API quota.`, "error");
+                    break;
+                }
+                
                 write(`[!] Loop Trap Detected. Forcing reroute...`, "error");
                 let trapMsg = `[SYSTEM FATAL BLOCK]: You are caught in a loop trying to ${plan.action} on index ${plan.target_index}. THIS IS A TRAP. Pick a new target or change your action.`;
                 if (plan.action === "new_tab") trapMsg = `[SYSTEM FATAL BLOCK]: You are endlessly spawning background tabs! STOP. You MUST use 'switch_tab' (using the Tab Number from AVAILABLE TABS) to move your vision to the tabs you just created before you do anything else!`;
                 actionHistory.push(trapMsg);
                 await new Promise(r => setTimeout(r, 3000));
                 continue;
+            } else {
+                loopTrapCount = 0;
             }
             lastActionKey = currentActionKey;
 
@@ -521,6 +531,13 @@ runBtn.onclick = async () => {
             }
 
             else if (plan.action === "inject_data") {
+                if (!tab.url.includes("spreadsheets") && !tab.url.includes("excel")) {
+                    write(`[!] Cannot inject_data! Not a spreadsheet page.`, "error");
+                    actionHistory.push(`[SYSTEM FATAL BLOCK] You attempted to use 'inject_data' on a non-spreadsheet page! You MUST use 'navigate' or 'new_tab' to go to 'https://sheets.new' FIRST before you can paste data!`);
+                    await new Promise(r => setTimeout(r, 2000));
+                    continue;
+                }
+
                 write(`Executing [SPREADSHEET INJECTION]...`, "debug");
                 const execResults = await chrome.scripting.executeScript({
                     target: { tabId: tab.id },
@@ -620,6 +637,9 @@ runBtn.onclick = async () => {
                 }
 
                 await new Promise(r => setTimeout(r, 3000));
+                
+                // Instruct small models to stop looping after spreadsheet injection
+                actionHistory.push(`[SYSTEM SUCCESS] You successfully performed [SPREADSHEET INJECTION]! Google Sheets hides text from the DOM scanner, so you will NOT see your pasted text. TRUST THAT IT WORKED. DO NOT REPEAT THE INJECTION. If your task is complete, output action: "finish" NOW.`);
             }
 
             else if (typeof plan.target_index === "number") {
